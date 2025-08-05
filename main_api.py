@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
-from aesgestion import AesGestion, HashGestion
+from aesgestion import AesGestion
+from hashgestion import HashGestion
 from rsagestion import RsaGestion
 import uvicorn
 
@@ -67,5 +68,5 @@ def rsa_decrypt(data: str = Form(...)):
     return {"decrypted": decrypted}
 
 if __name__ == "__main__":
-    uvicorn.run("main_api:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main_api:app", host="0.0.0.0", port=8000, reload=True)
 
