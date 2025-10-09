@@ -2,27 +2,27 @@ name: Python CI/CD
 
 on:
   push:
-    branches: [ cryptoHttp ]   # ⚡ Branche principale utilisée
+    branches: [ cryptoHttp ]   # ⚡ Branche utilisée
   pull_request:
     branches: [ cryptoHttp ]
-  workflow_dispatch:   # Permet de lancer manuellement
+  workflow_dispatch:   # lancement manuel
 
 jobs:
   build-test-docker:
     runs-on: [self-hosted, linux, x64]
 
     steps:
-    # ──────────────── 🔹 Préparation du code 🔹 ────────────────
+    # ──────────────── 🔹 1️⃣ Checkout code 🔹 ────────────────
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # ──────────────── 🔹 Setup Python 🔹 ────────────────
+    # ──────────────── 🔹 2️⃣ Setup Python 🔹 ────────────────
     - name: Setup Python 3.12
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
 
-    # ──────────────── 🔹 Dépendances Python 🔹 ────────────────
+    # ──────────────── 🔹 3️⃣ Installer les dépendances Python 🔹 ────────────────
     - name: Install dependencies
       run: |
         echo "::group::Installing Python dependencies"
@@ -30,8 +30,8 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         echo "::endgroup::"
 
-    # ──────────────── 🔹 Analyse du code (Lint) 🔹 ────────────────
-    - name: Run lint (flake8)
+    # ──────────────── 🔹 4️⃣ Linter (flake8) 🔹 ────────────────
+    - name: Run lint
       run: |
         echo "::group::Linting with flake8"
         pip install flake8
@@ -41,7 +41,7 @@ jobs:
         flake8 . || true
         echo "::endgroup::"
 
-    # ──────────────── 🔹 Tests unitaires 🔹 ────────────────
+    # ──────────────── 🔹 5️⃣ Tests unitaires 🔹 ────────────────
     - name: Run tests
       run: |
         echo "::group::Running pytest"
@@ -49,20 +49,28 @@ jobs:
         if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
         echo "::endgroup::"
 
-    # ──────────────── 🔹 Docker Build & Run 🔹 ────────────────
-    - name: Check Docker Compose version
-      run: docker compose version
+    # ──────────────── 🔹 6️⃣ Vérifier docker compose 🔹 ────────────────
+    - name: Check docker compose version
+      run: |
+        echo "::group::Checking Docker Compose version"
+        docker compose version
+        echo "::endgroup::"
 
+    # ──────────────── 🔹 7️⃣ Build & run avec Docker Compose 🔹 ────────────────
     - name: Start services with Docker Compose
       run: |
         echo "::group::Starting Docker Compose services"
         docker compose -f docker-compose.yaml up -d --build
         echo "::endgroup::"
 
-    - name: List running containers
-      run: docker ps -a
+    # ──────────────── 🔹 8️⃣ Vérifier les conteneurs 🔹 ────────────────
+    - name: Check running containers
+      run: |
+        echo "::group::Listing running containers"
+        docker ps -a
+        echo "::endgroup::"
 
-    # ──────────────── 🔹 Healthcheck API 🔹 ────────────────
+    # ──────────────── 🔹 9️⃣ Healthcheck API (optionnel) 🔹 ────────────────
     - name: Healthcheck FastAPI
       run: |
         echo "::group::Checking API health"
@@ -70,11 +78,10 @@ jobs:
         curl -f http://localhost:8000/docs || (echo "API not responding" && exit 1)
         echo "::endgroup::"
 
-    # ──────────────── 🔹 Nettoyage 🔹 ────────────────
+    # ──────────────── 🔹 🔟 Stop services 🔹 ────────────────
     - name: Stop services
       if: always()
       run: |
         echo "::group::Stopping Docker Compose services"
         docker compose -f docker-compose.yaml down
         echo "::endgroup::"
-
