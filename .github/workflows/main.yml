@@ -48,8 +48,9 @@ jobs:
     # 6️⃣ Construire l'image Docker
     - name: Build Docker image
       run: |
+        cd $GITHUB_WORKSPACE
+        ls -l  # Debug : vérifie que Dockerfile est bien là
         docker build -t cryptoimage:latest .
-
     # 7️⃣ (Optionnel) Pousser l'image sur Docker Hub
     #- name: Push Docker image
     #  env:
