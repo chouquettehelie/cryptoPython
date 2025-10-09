@@ -8,9 +8,6 @@ on:
   workflow_dispatch:   # permet lancement manuel
 
 jobs:
-  # =========================
-  # 1️⃣ Lint
-  # =========================
   lint:
     runs-on: [self-hosted, linux, x64]
     steps:
@@ -39,9 +36,6 @@ jobs:
           flake8 . || true
           echo "::endgroup::"
 
-  # =========================
-  # 2️⃣ Tests unitaires
-  # =========================
   tests:
     runs-on: [self-hosted, linux, x64]
     needs: lint
@@ -67,9 +61,7 @@ jobs:
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
 
-  # =========================
-  # 3️⃣ Build Docker
-  # =========================
+ 
   docker-build:
     runs-on: [self-hosted, linux, x64]
     needs: tests
@@ -84,15 +76,3 @@ jobs:
           ls -l  # vérifie que Dockerfile est présent
           docker build -t cryptoimage:latest .
           echo "::endgroup::"
-
-      # Optionnel : push Docker image
-      #- name: Push Docker image
-      #  env:
-      #    DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      #    DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      #  run: |
-      #    echo "::group::Pushing Docker image"
-      #    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      #    docker tag cryptoimage:latest $DOCKER_USERNAME/cryptoimage:latest
-      #    docker push $DOCKER_USERNAME/cryptoimage:latest
-      #    echo "::endgroup::"
