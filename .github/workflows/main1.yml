@@ -5,9 +5,12 @@ on:
     branches: [ cryptoHttp ]
   pull_request:
     branches: [ cryptoHttp ]
-  workflow_dispatch:   # permet lancement manuel
+  workflow_dispatch:
 
 jobs:
+  # =========================
+  # 1️⃣ Lint
+  # =========================
   lint:
     runs-on: [self-hosted, linux, x64]
     steps:
@@ -36,6 +39,9 @@ jobs:
           flake8 . || true
           echo "::endgroup::"
 
+  # =========================
+  # 2️⃣ Tests unitaires
+  # =========================
   tests:
     runs-on: [self-hosted, linux, x64]
     needs: lint
@@ -61,7 +67,9 @@ jobs:
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
 
- 
+  # =========================
+  # 3️⃣ Build Docker image
+  # =========================
   docker-build:
     runs-on: [self-hosted, linux, x64]
     needs: tests
@@ -73,6 +81,38 @@ jobs:
         run: |
           echo "::group::Building Docker image"
           cd $GITHUB_WORKSPACE
-          ls -l  # vérifie que Dockerfile est présent
+          ls -l
           docker build -t cryptoimage:latest .
           echo "::endgroup::"
+
+  # =========================
+  # 4️⃣ Test docker-compose (API doit répondre)
+  # =========================
+  docker-compose-test:
+    runs-on: [self-hosted, linux, x64]
+    needs: docker-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start app with docker-compose
+        run: |
+          echo "::group::Starting docker-compose"
+          docker-compose -f docker-compose.yaml up -d --build
+          sleep 10  # laisse le temps de démarrer
+          docker ps
+          echo "::endgroup::"
+
+      - name: Test API is running
+        run: |
+          echo "::group::Testing API"
+          curl -f http://localhost:8000 || (echo "API not responding" && exit 1)
+          echo "::endgroup::"
+
+      - name: Stop docker-compose
+        if: always()
+        run: |
+          echo "::group::Stopping docker-compose"
+          docker-compose -f docker-compose.yaml down
+          echo "::endgroup::"
+
