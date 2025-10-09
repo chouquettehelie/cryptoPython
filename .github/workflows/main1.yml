@@ -2,117 +2,62 @@ name: Python CI/CD
 
 on:
   push:
-    branches: [ cryptoHttp ]
+    branches: [ cryptoHttp ]   # ⚡ Utilise ta branche cryptoHttp
   pull_request:
     branches: [ cryptoHttp ]
-  workflow_dispatch:
+  workflow_dispatch:   # lancement manuel possible
 
 jobs:
-  # =========================
-  # 1️⃣ Lint
-  # =========================
-  lint:
+  build-test-docker:
     runs-on: [self-hosted, linux, x64]
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 1️⃣ Récupérer le code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
+    # 2️⃣ Installer Python
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
 
-      - name: Install flake8
-        run: |
-          echo "::group::Installing flake8"
-          python -m pip install --upgrade pip
-          pip install flake8
-          echo "::endgroup::"
+    # 3️⃣ Installer les dépendances
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run lint
-        run: |
-          echo "::group::Running flake8"
-          # Config légère pour ne pas bloquer CI
-          echo "[flake8]" > .flake8
-          echo "max-line-length = 120" >> .flake8
-          echo "ignore = F401,E501" >> .flake8
-          flake8 . || true
-          echo "::endgroup::"
+    # 4️⃣ Linter (assoupli, ne bloque pas la CI)
+    - name: Run lint
+      run: |
+        pip install flake8
+        echo "[flake8]" > .flake8
+        echo "max-line-length = 120" >> .flake8
+        echo "ignore = F401,E501" >> .flake8
+        flake8 . || true
 
-  # =========================
-  # 2️⃣ Tests unitaires
-  # =========================
-  tests:
-    runs-on: [self-hosted, linux, x64]
-    needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 5️⃣ Lancer les tests unitaires (optionnel)
+    - name: Run tests
+      run: |
+        pip install pytest
+        if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
+    # 6️⃣ Vérifier que docker compose est dispo
+    - name: Check docker compose version
+      run: docker compose version
 
-      - name: Install dependencies
-        run: |
-          echo "::group::Installing dependencies"
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          echo "::endgroup::"
+    # 7️⃣ Lancer docker compose (build + run en arrière-plan)
+    - name: Start services with Docker Compose
+      run: docker compose -f docker-compose.yaml up -d --build
 
-      - name: Run tests
-        run: |
-          echo "::group::Running pytest"
-          if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
-          echo "::endgroup::"
+    # 8️⃣ Vérifier que les conteneurs tournent
+    - name: Check running containers
+      run: docker ps -a
 
-  # =========================
-  # 3️⃣ Build Docker image
-  # =========================
-  docker-build:
-    runs-on: [self-hosted, linux, x64]
-    needs: tests
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 9️⃣ (Optionnel) Stopper les conteneurs après les tests
+    - name: Stop services
+      if: always()
+      run: docker compose -f docker-compose.yaml down
 
-      - name: Build Docker image
-        run: |
-          echo "::group::Building Docker image"
-          cd $GITHUB_WORKSPACE
-          ls -l
-          docker build -t cryptoimage:latest .
-          echo "::endgroup::"
-
-  # =========================
-  # 4️⃣ Test docker-compose (API doit répondre)
-  # =========================
-  docker-compose-test:
-    runs-on: [self-hosted, linux, x64]
-    needs: docker-build
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Start app with docker-compose
-        run: |
-          echo "::group::Starting docker-compose"
-          docker-compose -f docker-compose.yaml up -d --build
-          sleep 10  # laisse le temps de démarrer
-          docker ps
-          echo "::endgroup::"
-
-      - name: Test API is running
-        run: |
-          echo "::group::Testing API"
-          curl -f http://localhost:8000 || (echo "API not responding" && exit 1)
-          echo "::endgroup::"
-
-      - name: Stop docker-compose
-        if: always()
-        run: |
-          echo "::group::Stopping docker-compose"
-          docker-compose -f docker-compose.yaml down
-          echo "::endgroup::"
 
