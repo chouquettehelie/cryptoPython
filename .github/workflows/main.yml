@@ -1,6 +1,6 @@
 name: Python CI/CD
 
-# Déclenche le workflow sur push ou pull request
+# Déclenche le workflow sur push ou PR sur main
 on:
   push:
     branches: [ main ]
@@ -8,8 +8,50 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-test-docker:
+    # Utilisation d'un runner self-hosted
     runs-on: [self-hosted, linux, x64]
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 1️⃣ Récupérer le code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2️⃣ Installer Python
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    # 3️⃣ Installer les dépendances
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # 4️⃣ Linter (optionnel)
+    - name: Run lint
+      run: |
+        pip install flake8
+        flake8 .
+
+    # 5️⃣ Lancer les tests unitaires
+    - name: Run tests
+      run: |
+        pip install pytest
+        if ls test_*.py 1> /dev/null 2>&1; then pytest; else echo "No tests found"; fi
+
+    # 6️⃣ Construire l'image Docker
+    - name: Build Docker image
+      run: |
+        docker build -t cryptoimage:latest .
+
+    # 7️⃣ (Optionnel) Pousser l'image sur Docker Hub
+    #- name: Push Docker image
+    #  env:
+    #    DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+    #    DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    #  run: |
+    #    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    #    docker tag cryptoimage:latest $DOCKER_USERNAME/cryptoimage:latest
+    #    docker push $DOCKER_USERNAME/cryptoimage:latest
