@@ -2,9 +2,9 @@ name: Python CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ cryptoHttp ]
   pull_request:
-    branches: [ main ]
+    branches: [ cryptoHttp ]
   workflow_dispatch:   # permet aussi de déclencher manuellement
 
 jobs:
