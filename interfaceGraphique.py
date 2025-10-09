@@ -3,7 +3,7 @@ from tkinter import filedialog, messagebox, simpledialog
 import requests
 from requests.exceptions import RequestException
 
-API_URL = "http://192.168.1.140:8000"  
+API_URL = "http://192.168.1.140:8000"  #test
 
 def call_api(endpoint, data):
     """Appel à l'API (envoie des champs en form-data). Retourne dict ou {} en cas d'erreur."""
