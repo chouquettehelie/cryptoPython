@@ -2,86 +2,112 @@ name: Python CI/CD
 
 on:
   push:
-    branches: [ cryptoHttp ]   # ⚡ Branche utilisée
+    branches: [ cryptoHttp ]
   pull_request:
     branches: [ cryptoHttp ]
   workflow_dispatch:   # lancement manuel
 
 jobs:
-  build-test-docker:
+  # ──────────────── 🔹 1️⃣ Lint 🔹 ────────────────
+  lint:
     runs-on: [self-hosted, linux, x64]
-
     steps:
-    # ──────────────── 🔹 1️⃣ Checkout code 🔹 ────────────────
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # ──────────────── 🔹 2️⃣ Setup Python 🔹 ────────────────
-    - name: Setup Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
 
-    # ──────────────── 🔹 3️⃣ Installer les dépendances Python 🔹 ────────────────
-    - name: Install dependencies
-      run: |
-        echo "::group::Installing Python dependencies"
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        echo "::endgroup::"
+      - name: Install flake8
+        run: |
+          echo "::group::Installing flake8"
+          python -m pip install --upgrade pip
+          pip install flake8
+          echo "::endgroup::"
 
-    # ──────────────── 🔹 4️⃣ Linter (flake8) 🔹 ────────────────
-    - name: Run lint
-      run: |
-        echo "::group::Linting with flake8"
-        pip install flake8
-        echo "[flake8]" > .flake8
-        echo "max-line-length = 120" >> .flake8
-        echo "ignore = F401,E501" >> .flake8
-        flake8 . || true
-        echo "::endgroup::"
+      - name: Run lint
+        run: |
+          echo "::group::Running flake8"
+          echo "[flake8]" > .flake8
+          echo "max-line-length = 120" >> .flake8
+          echo "ignore = F401,E501" >> .flake8
+          flake8 . || true
+          echo "::endgroup::"
 
-    # ──────────────── 🔹 5️⃣ Tests unitaires 🔹 ────────────────
-    - name: Run tests
-      run: |
-        echo "::group::Running pytest"
-        pip install pytest
-        if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
-        echo "::endgroup::"
+  # ──────────────── 🔹 2️⃣ Tests 🔹 ────────────────
+  tests:
+    runs-on: [self-hosted, linux, x64]
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # ──────────────── 🔹 6️⃣ Vérifier docker compose 🔹 ────────────────
-    - name: Check docker compose version
-      run: |
-        echo "::group::Checking Docker Compose version"
-        docker compose version
-        echo "::endgroup::"
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
 
-    # ──────────────── 🔹 7️⃣ Build & run avec Docker Compose 🔹 ────────────────
-    - name: Start services with Docker Compose
-      run: |
-        echo "::group::Starting Docker Compose services"
-        docker compose -f docker-compose.yaml up -d --build
-        echo "::endgroup::"
+      - name: Install dependencies
+        run: |
+          echo "::group::Installing dependencies"
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          echo "::endgroup::"
 
-    # ──────────────── 🔹 8️⃣ Vérifier les conteneurs 🔹 ────────────────
-    - name: Check running containers
-      run: |
-        echo "::group::Listing running containers"
-        docker ps -a
-        echo "::endgroup::"
+      - name: Run tests
+        run: |
+          echo "::group::Running pytest"
+          if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
+          echo "::endgroup::"
 
-    # ──────────────── 🔹 9️⃣ Healthcheck API (optionnel) 🔹 ────────────────
-    - name: Healthcheck FastAPI
-      run: |
-        echo "::group::Checking API health"
-        sleep 5  # laisse le temps au conteneur de démarrer
-        curl -f http://localhost:8000/docs || (echo "API not responding" && exit 1)
-        echo "::endgroup::"
+  # ──────────────── 🔹 3️⃣ Build Docker 🔹 ────────────────
+  docker-build:
+    runs-on: [self-hosted, linux, x64]
+    needs: tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # ──────────────── 🔹 🔟 Stop services 🔹 ────────────────
-    - name: Stop services
-      if: always()
-      run: |
-        echo "::group::Stopping Docker Compose services"
-        docker compose -f docker-compose.yaml down
-        echo "::endgroup::"
+      - name: Build Docker image
+        run: |
+          echo "::group::Building Docker image"
+          cd $GITHUB_WORKSPACE
+          ls -l  # vérifie que Dockerfile est présent
+          docker build -t cryptoimage:latest .
+          echo "::endgroup::"
+
+  # ──────────────── 🔹 4️⃣ Docker Compose (run + healthcheck) 🔹 ────────────────
+  docker-compose:
+    runs-on: [self-hosted, linux, x64]
+    needs: docker-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start services with Docker Compose
+        run: |
+          echo "::group::Starting Docker Compose services"
+          docker compose -f docker-compose.yaml up -d --build
+          echo "::endgroup::"
+
+      - name: List running containers
+        run: |
+          echo "::group::Listing running containers"
+          docker ps -a
+          echo "::endgroup::"
+
+      - name: Healthcheck FastAPI
+        run: |
+          echo "::group::Checking API health"
+          sleep 5
+          curl -f http://localhost:8000/docs || (echo "API not responding" && exit 1)
+          echo "::endgroup::"
+
+      - name: Stop services
+        if: always()
+        run: |
+          echo "::group::Stopping Docker Compose services"
+          docker compose -f docker-compose.yaml down
+          echo "::endgroup::"
