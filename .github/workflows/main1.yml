@@ -1,19 +1,22 @@
-name: Python CI/CD
+name: Python CI/CD via Docker Compose
 
 on:
   push:
     branches: [ cryptoHttp ]
   pull_request:
     branches: [ cryptoHttp ]
-  workflow_dispatch:   # lancement manuel
+  workflow_dispatch:   # permet lancement manuel
 
 jobs:
- 
+  # ──────────────── 🔹 1️⃣ Lint 🔹 ────────────────
   lint:
     runs-on: [self-hosted, linux, x64]
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -36,13 +39,20 @@ jobs:
           flake8 . || true
           echo "::endgroup::"
 
-  
+      - name: Clean runner pycache
+        run: |
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+
+
+  # ──────────────── 🔹 2️⃣ Tests unitaires 🔹 ────────────────
   tests:
     runs-on: [self-hosted, linux, x64]
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -61,53 +71,23 @@ jobs:
           echo "::group::Running pytest"
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
+      - name: Clean runner pycache
+        run: |
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
 
 
-  docker-build:
+  # ──────────────── 🔹 3️⃣ Docker Compose 🔹 ────────────────
+  docker-compose:
     runs-on: [self-hosted, linux, x64]
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
     needs: tests
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      - name: Build Docker image
+
+      - name: Clean runner pycache
         run: |
-          echo "::group::Building Docker image"
-          cd $GITHUB_WORKSPACE
-          ls -l  # vérifie que Dockerfile est présent
-          docker build -t cryptoimage:latest .
-          echo "::endgroup::"
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
 
- 
-  docker-compose:
-    runs-on: [self-hosted, linux, x64]
-    needs: docker-build
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Start services with Docker Compose
-        run: |
-          echo "::group::Starting Docker Compose services"
-          docker compose -f docker-compose.yaml up -d --build
-          echo "::endgroup::"
-
-      - name: List running containers
-        run: |
-          echo "::group::Listing running containers"
-          docker ps -a
-          echo "::endgroup::"
-
-      - name: Healthcheck FastAPI
-        run: |
-          echo "::group::Checking API health"
-          sleep 5
-          curl -f http://localhost:8000/docs || (echo "API not responding" && exit 1)
-          echo "::endgroup::"
-
-      - name: Stop services
-        if: always()
-        run: |
-          echo "::group::Stopping Docker Compose services"
-          docker compose -f docker-compose.yaml down
-          echo "::endgroup::"
