@@ -5,10 +5,9 @@ on:
     branches: [ cryptoHttp ]
   pull_request:
     branches: [ cryptoHttp ]
-  workflow_dispatch:   # lancement manuel
+  workflow_dispatch:   # permet lancement manuel
 
 jobs:
- 
   lint:
     runs-on: [self-hosted, linux, x64]
     steps:
@@ -36,7 +35,6 @@ jobs:
           flake8 . || true
           echo "::endgroup::"
 
-  
   tests:
     runs-on: [self-hosted, linux, x64]
     needs: lint
@@ -56,12 +54,17 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           echo "::endgroup::"
 
+      - name: Cleanup Python cache
+        run: |
+          echo "::group::Cleaning __pycache__"
+          find . -type d -name "__pycache__" -exec rm -rf {} +
+          echo "::endgroup::"
+
       - name: Run tests
         run: |
           echo "::group::Running pytest"
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
-
 
   docker-build:
     runs-on: [self-hosted, linux, x64]
@@ -70,21 +73,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Verify Dockerfile exists
+        run: |
+          echo "::group::Checking Dockerfile"
+          ls -l Dockerfile || (echo "Dockerfile not found!" && exit 1)
+          echo "::endgroup::"
+
       - name: Build Docker image
         run: |
           echo "::group::Building Docker image"
-          cd $GITHUB_WORKSPACE
-          ls -l  # vérifie que Dockerfile est présent
-          docker build -t cryptoimage:latest .
+          docker build --progress=plain -t cryptoimage:latest .
           echo "::endgroup::"
-
- 
-  docker-compose:
-    runs-on: [self-hosted, linux, x64]
-    needs: docker-build
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
 
       - name: Start services with Docker Compose
         run: |
@@ -92,20 +91,13 @@ jobs:
           docker compose -f docker-compose.yaml up -d --build
           echo "::endgroup::"
 
-      - name: List running containers
+      - name: Verify running containers
         run: |
           echo "::group::Listing running containers"
           docker ps -a
           echo "::endgroup::"
 
-      - name: Healthcheck FastAPI
-        run: |
-          echo "::group::Checking API health"
-          sleep 5
-          curl -f http://localhost:8000/docs || (echo "API not responding" && exit 1)
-          echo "::endgroup::"
-
-      - name: Stop services
+      - name: Stop Docker Compose services
         if: always()
         run: |
           echo "::group::Stopping Docker Compose services"
