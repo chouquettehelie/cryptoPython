@@ -86,6 +86,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Start services with Docker Compose
+        run: |
+          echo "::group::Starting Docker Compose services"
+          docker compose -f docker-compose.yaml up -d --build
+          echo "::endgroup::"
+
 
       - name: Clean runner pycache
         run: |
