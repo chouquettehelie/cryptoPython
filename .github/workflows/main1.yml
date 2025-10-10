@@ -47,6 +47,8 @@ jobs:
   # ──────────────── 🔹 2️⃣ Tests unitaires 🔹 ────────────────
   tests:
     runs-on: [self-hosted, linux, x64]
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
     needs: lint
     steps:
       - name: Checkout code
@@ -77,6 +79,8 @@ jobs:
   # ──────────────── 🔹 3️⃣ Docker Compose 🔹 ────────────────
   docker-compose:
     runs-on: [self-hosted, linux, x64]
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
     needs: tests
     steps:
       - name: Checkout code
