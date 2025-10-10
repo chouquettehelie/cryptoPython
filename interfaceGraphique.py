@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog, filedialog
 import requests
 
 API_URL = "http://192.168.1.60:8000"  # ton serveur
@@ -17,72 +17,129 @@ class CryptoGUI:
     def __init__(self, root):
         self.root = root
         root.title("Crypto GUI")
+        root.geometry("650x450")
         root.resizable(False, False)
 
-        self.cipher_type = tk.StringVar(value="AES")
         self.aes_loaded = False
         self.rsa_loaded = False
 
-        # --- Choix méthode ---
-        frame_top = tk.Frame(root, padx=10, pady=10)
-        frame_top.grid(row=0, column=0, sticky="w")
-        tk.Label(frame_top, text="Méthode :").grid(row=0, column=0, sticky='e')
-        tk.OptionMenu(frame_top, self.cipher_type, "AES", "RSA").grid(row=0, column=1, sticky='w')
+        # Onglets
+        self.notebook = ttk.Notebook(root)
+        self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
-        # --- Clés ---
-        frame_keys = tk.Frame(root, padx=10, pady=5)
-        frame_keys.grid(row=1, column=0, sticky="w")
-        tk.Button(frame_keys, text="Générer clé AES", width=15, command=self.generate_aes_key).grid(row=0, column=0, padx=5, pady=3)
-        tk.Button(frame_keys, text="Charger clés RSA", width=15, command=self.load_rsa_keys).grid(row=0, column=1, padx=5, pady=3)
-        tk.Button(frame_keys, text="Générer clés RSA", width=15, command=self.generate_rsa_keys).grid(row=0, column=2, padx=5, pady=3)
+        self.tab_aes = ttk.Frame(self.notebook)
+        self.tab_rsa = ttk.Frame(self.notebook)
+        self.tab_hash = ttk.Frame(self.notebook)
 
-        # --- Actions ---
-        frame_actions = tk.Frame(root, padx=10, pady=10)
-        frame_actions.grid(row=2, column=0, sticky="w")
-        tk.Button(frame_actions, text="Chiffrer", width=12, command=self.encrypt_data).grid(row=0, column=0, padx=5, pady=3)
-        tk.Button(frame_actions, text="Déchiffrer", width=12, command=self.decrypt_data).grid(row=0, column=1, padx=5, pady=3)
-        tk.Button(frame_actions, text="SHA-256", width=12, command=self.hash_sha256).grid(row=0, column=2, padx=5, pady=3)
+        self.notebook.add(self.tab_aes, text="AES")
+        self.notebook.add(self.tab_rsa, text="RSA")
+        self.notebook.add(self.tab_hash, text="SHA-256")
 
-        # --- Résultat ---
-        frame_result = tk.Frame(root, padx=10, pady=5)
-        frame_result.grid(row=3, column=0, sticky="w")
-        tk.Label(frame_result, text="Résultat :").grid(row=0, column=0, sticky='w')
-        self.result_text = tk.Text(frame_result, height=6, width=60, wrap='word')
-        self.result_text.grid(row=1, column=0, pady=5)
+        self.create_aes_tab()
+        self.create_rsa_tab()
+        self.create_hash_tab()
 
-        # --- Bas ---
-        frame_bottom = tk.Frame(root, padx=10, pady=10)
-        frame_bottom.grid(row=4, column=0, sticky="e")
-        tk.Button(frame_bottom, text="Effacer", width=10, command=self.clear_result).grid(row=0, column=0, padx=5)
-        tk.Button(frame_bottom, text="Quitter", width=10, command=root.destroy).grid(row=0, column=1, padx=5)
+    # ---------------- AES ----------------
+    def create_aes_tab(self):
+        frame_buttons = tk.Frame(self.tab_aes)
+        frame_buttons.pack(pady=15)
 
-    def set_result(self, text):
-        self.result_text.delete("1.0", tk.END)
-        self.result_text.insert(tk.END, text)
+        tk.Button(frame_buttons, text="Générer clé AES", bg="#4CAF50", fg="white", font=("Arial", 11),
+                  width=20, command=self.generate_aes_key).grid(row=0, column=0, padx=5, pady=5)
+        tk.Button(frame_buttons, text="Charger clé AES", bg="#2196F3", fg="white", font=("Arial", 11),
+                  width=20, command=self.load_aes_key).grid(row=0, column=1, padx=5, pady=5)
 
-    def clear_result(self):
-        self.result_text.delete("1.0", tk.END)
+        frame_actions = tk.Frame(self.tab_aes)
+        frame_actions.pack(pady=10)
+        tk.Button(frame_actions, text="Chiffrer", bg="#FF9800", fg="white", font=("Arial", 11),
+                  width=15, command=self.encrypt_aes).grid(row=0, column=0, padx=5, pady=5)
+        tk.Button(frame_actions, text="Déchiffrer", bg="#f44336", fg="white", font=("Arial", 11),
+                  width=15, command=self.decrypt_aes).grid(row=0, column=1, padx=5, pady=5)
 
-    # --- Clés AES ---
+        self.result_aes = tk.Text(self.tab_aes, height=8, width=70, bg="#f0f0f0", font=("Courier", 11))
+        self.result_aes.pack(pady=10)
+
+    # ---------------- RSA ----------------
+    def create_rsa_tab(self):
+        frame_buttons = tk.Frame(self.tab_rsa)
+        frame_buttons.pack(pady=15)
+
+        tk.Button(frame_buttons, text="Générer clés RSA", bg="#4CAF50", fg="white", font=("Arial", 11),
+                  width=20, command=self.generate_rsa_keys).grid(row=0, column=0, padx=5, pady=5)
+        tk.Button(frame_buttons, text="Charger clés RSA", bg="#2196F3", fg="white", font=("Arial", 11),
+                  width=20, command=self.load_rsa_keys).grid(row=0, column=1, padx=5, pady=5)
+
+        frame_actions = tk.Frame(self.tab_rsa)
+        frame_actions.pack(pady=10)
+        tk.Button(frame_actions, text="Chiffrer", bg="#FF9800", fg="white", font=("Arial", 11),
+                  width=15, command=self.encrypt_rsa).grid(row=0, column=0, padx=5, pady=5)
+        tk.Button(frame_actions, text="Déchiffrer", bg="#f44336", fg="white", font=("Arial", 11),
+                  width=15, command=self.decrypt_rsa).grid(row=0, column=1, padx=5, pady=5)
+
+        self.result_rsa = tk.Text(self.tab_rsa, height=8, width=70, bg="#f0f0f0", font=("Courier", 11))
+        self.result_rsa.pack(pady=10)
+
+    # ---------------- SHA-256 ----------------
+    def create_hash_tab(self):
+        frame_actions = tk.Frame(self.tab_hash)
+        frame_actions.pack(pady=15)
+
+        tk.Button(frame_actions, text="Calculer SHA-256", bg="#9C27B0", fg="white", font=("Arial", 11),
+                  width=25, command=self.hash_sha256).pack(pady=5)
+
+        self.result_hash = tk.Text(self.tab_hash, height=8, width=70, bg="#f0f0f0", font=("Courier", 11))
+        self.result_hash.pack(pady=10)
+
+    # ---------------- AES Actions ----------------
     def generate_aes_key(self):
         res = call_api("/aes/generate_key", {})
-        status = res.get("status")
-        if status:
-            messagebox.showinfo("AES", status)
+        if res.get("status"):
+            messagebox.showinfo("AES", res["status"])
             self.aes_loaded = True
 
-    # --- Clés RSA ---
+    def load_aes_key(self):
+        filepath = filedialog.askopenfilename(title="Choisir la clé AES")
+        if filepath:
+            res = call_api("/aes/load_key", {"filename": filepath})
+            if res.get("status"):
+                messagebox.showinfo("AES", res["status"])
+                self.aes_loaded = True
+
+    def encrypt_aes(self):
+        if not self.aes_loaded:
+            messagebox.showwarning("AES", "Générez ou chargez la clé AES avant de chiffrer.")
+            return
+        data = simpledialog.askstring("AES Chiffrement", "Texte à chiffrer :")
+        if data:
+            res = call_api("/aes/encrypt_string", {"data": data})
+            encrypted = res.get("encrypted")
+            if encrypted:
+                self.result_aes.delete("1.0", tk.END)
+                self.result_aes.insert(tk.END, encrypted)
+
+    def decrypt_aes(self):
+        if not self.aes_loaded:
+            messagebox.showwarning("AES", "Générez ou chargez la clé AES avant de déchiffrer.")
+            return
+        data = simpledialog.askstring("AES Déchiffrement", "Texte chiffré :")
+        if data:
+            res = call_api("/aes/decrypt_string", {"data": data})
+            decrypted = res.get("decrypted")
+            if decrypted:
+                self.result_aes.delete("1.0", tk.END)
+                self.result_aes.insert(tk.END, decrypted)
+
+    # ---------------- RSA Actions ----------------
     def generate_rsa_keys(self):
-        pub_file = simpledialog.askstring("RSA", "Nom fichier clé publique (sera créé) :")
+        pub_file = simpledialog.askstring("RSA", "Nom fichier clé publique :")
         if not pub_file: return
-        priv_file = simpledialog.askstring("RSA", "Nom fichier clé privée (sera créé) :")
+        priv_file = simpledialog.askstring("RSA", "Nom fichier clé privée :")
         if not priv_file: return
-        size = simpledialog.askinteger("RSA", "Taille clé RSA (ex: 2048) :", initialvalue=2048)
+        size = simpledialog.askinteger("RSA", "Taille clé RSA :", initialvalue=2048)
         if not size: return
         res = call_api("/rsa/generate_keys", {"public_file": pub_file, "private_file": priv_file, "size": size})
-        status = res.get("status")
-        if status:
-            messagebox.showinfo("RSA", status)
+        if res.get("status"):
+            messagebox.showinfo("RSA", res["status"])
             self.rsa_loaded = True
 
     def load_rsa_keys(self):
@@ -91,55 +148,45 @@ class CryptoGUI:
         priv = filedialog.askopenfilename(title="Clé privée RSA")
         if not priv: return
         res = call_api("/rsa/load_keys", {"pub_file": pub, "priv_file": priv})
-        status = res.get("status")
-        if status:
-            messagebox.showinfo("RSA", status)
+        if res.get("status"):
+            messagebox.showinfo("RSA", res["status"])
             self.rsa_loaded = True
 
-    # --- Actions ---
-    def encrypt_data(self):
-        data = simpledialog.askstring("Chiffrement", "Texte à chiffrer :")
-        if not data: return
-        if self.cipher_type.get() == "AES":
-            if not self.aes_loaded:
-                messagebox.showwarning("AES", "Veuillez générer la clé AES avant de chiffrer.")
-                return
-            res = call_api("/aes/encrypt_string", {"data": data})
-            encrypted = res.get("encrypted")
-            if encrypted: self.set_result(encrypted)
-        else:
-            if not self.rsa_loaded:
-                messagebox.showwarning("RSA", "Veuillez générer ou charger les clés RSA avant de chiffrer.")
-                return
+    def encrypt_rsa(self):
+        if not self.rsa_loaded:
+            messagebox.showwarning("RSA", "Générez ou chargez les clés RSA avant de chiffrer.")
+            return
+        data = simpledialog.askstring("RSA Chiffrement", "Texte à chiffrer :")
+        if data:
             res = call_api("/rsa/encrypt", {"data": data})
             encrypted = res.get("encrypted")
-            if encrypted: self.set_result(encrypted)
+            if encrypted:
+                self.result_rsa.delete("1.0", tk.END)
+                self.result_rsa.insert(tk.END, encrypted)
 
-    def decrypt_data(self):
-        data = simpledialog.askstring("Déchiffrement", "Texte chiffré :")
-        if not data: return
-        if self.cipher_type.get() == "AES":
-            if not self.aes_loaded:
-                messagebox.showwarning("AES", "Veuillez générer la clé AES avant de déchiffrer.")
-                return
-            res = call_api("/aes/decrypt_string", {"data": data})
-            decrypted = res.get("decrypted")
-            if decrypted: self.set_result(decrypted)
-        else:
-            if not self.rsa_loaded:
-                messagebox.showwarning("RSA", "Veuillez générer ou charger les clés RSA avant de déchiffrer.")
-                return
+    def decrypt_rsa(self):
+        if not self.rsa_loaded:
+            messagebox.showwarning("RSA", "Générez ou chargez les clés RSA avant de déchiffrer.")
+            return
+        data = simpledialog.askstring("RSA Déchiffrement", "Texte chiffré :")
+        if data:
             res = call_api("/rsa/decrypt", {"data": data})
             decrypted = res.get("decrypted")
-            if decrypted: self.set_result(decrypted)
+            if decrypted:
+                self.result_rsa.delete("1.0", tk.END)
+                self.result_rsa.insert(tk.END, decrypted)
 
+    # ---------------- SHA-256 Action ----------------
     def hash_sha256(self):
         data = simpledialog.askstring("SHA-256", "Texte à hacher :")
-        if not data: return
-        res = call_api("/hash/sha256", {"data": data})
-        sha = res.get("sha256")
-        if sha: self.set_result(sha)
+        if data:
+            res = call_api("/hash/sha256", {"data": data})
+            sha = res.get("sha256")
+            if sha:
+                self.result_hash.delete("1.0", tk.END)
+                self.result_hash.insert(tk.END, sha)
 
+# ---------------- Lancer GUI ----------------
 if __name__ == "__main__":
     root = tk.Tk()
     app = CryptoGUI(root)
