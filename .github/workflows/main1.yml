@@ -8,7 +8,7 @@ on:
   workflow_dispatch:   # lancement manuel
 
 jobs:
-  # ──────────────── 🔹 1️⃣ Lint 🔹 ────────────────
+ 
   lint:
     runs-on: [self-hosted, linux, x64]
     steps:
@@ -36,7 +36,7 @@ jobs:
           flake8 . || true
           echo "::endgroup::"
 
-  # ──────────────── 🔹 2️⃣ Tests unitaires 🔹 ────────────────
+  
   tests:
     runs-on: [self-hosted, linux, x64]
     needs: lint
@@ -62,7 +62,7 @@ jobs:
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
 
-  # ──────────────── 🔹 3️⃣ Docker build 🔹 ────────────────
+
   docker-build:
     runs-on: [self-hosted, linux, x64]
     needs: tests
@@ -78,7 +78,7 @@ jobs:
           docker build -t cryptoimage:latest .
           echo "::endgroup::"
 
-  # ──────────────── 🔹 4️⃣ Docker Compose 🔹 ────────────────
+ 
   docker-compose:
     runs-on: [self-hosted, linux, x64]
     needs: docker-build
