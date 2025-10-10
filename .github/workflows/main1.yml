@@ -36,6 +36,11 @@ jobs:
           flake8 . || true
           echo "::endgroup::"
 
+      - name: Clean runner pycache
+        run: |
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+
+
   # ──────────────── 🔹 2️⃣ Tests unitaires 🔹 ────────────────
   tests:
     runs-on: [self-hosted, linux, x64]
@@ -61,6 +66,10 @@ jobs:
           echo "::group::Running pytest"
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
+      - name: Clean runner pycache
+        run: |
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+
 
   # ──────────────── 🔹 3️⃣ Docker Compose 🔹 ────────────────
   docker-compose:
@@ -95,3 +104,7 @@ jobs:
           echo "::group::Stopping Docker Compose services"
           docker compose -f docker-compose.yaml down
           echo "::endgroup::"
+      - name: Clean runner pycache
+        run: |
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+
