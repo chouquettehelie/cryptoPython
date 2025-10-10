@@ -11,6 +11,9 @@ jobs:
   # ──────────────── 🔹 1️⃣ Lint 🔹 ────────────────
   lint:
     runs-on: [self-hosted, linux, x64]
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
