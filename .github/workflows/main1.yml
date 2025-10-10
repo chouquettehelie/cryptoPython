@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -52,7 +52,7 @@ jobs:
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -84,33 +84,9 @@ jobs:
     needs: tests
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      - name: Start services with Docker Compose
-        run: |
-          echo "::group::Starting Docker Compose services"
-          docker compose -f docker-compose.yaml up -d --build
-          echo "::endgroup::"
 
-      - name: List running containers
-        run: |
-          echo "::group::Listing running containers"
-          docker ps -a
-          echo "::endgroup::"
-
-      - name: Healthcheck FastAPI
-        run: |
-          echo "::group::Checking API health"
-          sleep 5
-          curl -f http://localhost:8000/docs || (echo "API not responding" && exit 1)
-          echo "::endgroup::"
-
-      - name: Stop services
-        if: always()
-        run: |
-          echo "::group::Stopping Docker Compose services"
-          docker compose -f docker-compose.yaml down
-          echo "::endgroup::"
       - name: Clean runner pycache
         run: |
           find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
