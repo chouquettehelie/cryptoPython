@@ -1,11 +1,11 @@
-name: Python CI/CD
+name: Python CI/CD via Docker Compose
 
 on:
   push:
     branches: [ cryptoHttp ]
   pull_request:
     branches: [ cryptoHttp ]
-  workflow_dispatch:   # lancement manuel
+  workflow_dispatch:   # permet lancement manuel
 
 jobs:
   # ──────────────── 🔹 1️⃣ Lint 🔹 ────────────────
@@ -62,26 +62,10 @@ jobs:
           if ls test_*.py 1> /dev/null 2>&1; then pytest || true; else echo "No tests found"; fi
           echo "::endgroup::"
 
-  # ──────────────── 🔹 3️⃣ Docker build 🔹 ────────────────
-  docker-build:
-    runs-on: [self-hosted, linux, x64]
-    needs: tests
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Build Docker image
-        run: |
-          echo "::group::Building Docker image"
-          cd $GITHUB_WORKSPACE
-          ls -l  # vérifie que Dockerfile est présent
-          docker build -t cryptoimage:latest .
-          echo "::endgroup::"
-
-  # ──────────────── 🔹 4️⃣ Docker Compose 🔹 ────────────────
+  # ──────────────── 🔹 3️⃣ Docker Compose 🔹 ────────────────
   docker-compose:
     runs-on: [self-hosted, linux, x64]
-    needs: docker-build
+    needs: tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
