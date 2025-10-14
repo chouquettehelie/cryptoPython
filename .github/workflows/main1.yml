@@ -3,7 +3,7 @@ name: Build and Run Docker Container
 on:
   push:
     branches:
-      -cryptoHttp
+      - cryptoHttp
   pull_request:
 
 jobs:
