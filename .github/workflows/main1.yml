@@ -23,7 +23,6 @@ jobs:
       
       - name: Clean __pycache__ files
         run: |
-          echo "Cleaning Python cache..."
           find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
 
      
