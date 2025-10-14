@@ -1,30 +1,38 @@
-name: Python CI/CD
+name: Build and Run Docker Container
 
 on:
   push:
-    branches: [ cryptoHttp ]
+    branches:
+      - "*"
   pull_request:
-    branches: [ cryptoHttp ]
-  workflow_dispatch:   # lancement manuel
+  workflow_dispatch:
 
 jobs:
- 
-  lint:
-    runs-on: host-runner
+  build-and-run:
+    runs-on: self-hosted
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      # 1️⃣ Checkout sans nettoyer pour éviter les problèmes avec __pycache__
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          name: binaries
-          path: |
-            docker-compose.yml
+          clean: false
 
-
-      - name: Docker
+      # 2️⃣ Supprimer les dossiers __pycache__ existants
+      - name: Clean __pycache__ files
         run: |
-          docker build -t cryptoimage .
-          docker compose up -d
+          
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+
+      # 3️⃣ Build Dockerfile
+      - name: Build Docker image
+        run: docker build -t cryptoimage:latest .
+
+      # 4️⃣ Lancer docker-compose
+      - name: Run docker compose
+        run: |
+          docker compose up --build -d
+          sleep 5
+          docker ps
