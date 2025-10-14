@@ -10,22 +10,33 @@ on:
 jobs:
   build-and-run:
     runs-on: self-hosted
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
 
     steps:
-      # Checkout sans nettoyer pour éviter les problèmes avec __pycache__
+    
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           clean: false
 
-      # Build Dockerfile
+      
+      - name: Clean __pycache__ files
+        run: |
+          echo "Cleaning Python cache..."
+          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+
+     
       - name: Build Docker image
         run: docker build -t cryptoimage:latest .
 
-      # Lancer docker-compose
+     
       - name: Run docker compose
         run: |
           docker compose up --build -d
           sleep 5
           docker ps
+
+
+
 
