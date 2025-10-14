@@ -14,23 +14,23 @@ jobs:
       PYTHONDONTWRITEBYTECODE: 1
 
     steps:
-      # 1️⃣ Checkout sans nettoyer pour éviter les problèmes avec __pycache__
+      
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           clean: false
 
-      # 2️⃣ Supprimer les dossiers __pycache__ existants
+   
       - name: Clean __pycache__ files
         run: |
           
           find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
 
-      # 3️⃣ Build Dockerfile
+     
       - name: Build Docker image
         run: docker build -t cryptoimage:latest .
 
-      # 4️⃣ Lancer docker-compose
+     
       - name: Run docker compose
         run: |
           docker compose up --build -d
