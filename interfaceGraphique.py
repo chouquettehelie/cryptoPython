@@ -1,12 +1,21 @@
+import os
+import base64
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 import requests
 
-API_URL = "http://192.168.1.60:8000"  # ton serveur
+# Répertoire local Windows pour stocker les clés
+LOCAL_DIR = r"C:\Users\CIEL24_admin\Documents\CICD\mp00-applicationSecurite\cryptoPython"
 
-def call_api(endpoint, data):
+# Assurer que le dossier existe
+os.makedirs(LOCAL_DIR, exist_ok=True)
+
+API_URL = "http://192.168.1.60:8000"  # Adresse de ton serveur
+
+def call_api(endpoint, data=None):
+    """Appel POST vers l'API FastAPI."""
     try:
-        res = requests.post(f"{API_URL}{endpoint}", data=data)
+        res = requests.post(f"{API_URL}{endpoint}", data=data or {})
         res.raise_for_status()
         return res.json()
     except Exception as e:
@@ -92,18 +101,26 @@ class CryptoGUI:
 
     # ---------------- AES Actions ----------------
     def generate_aes_key(self):
-        res = call_api("/aes/generate_key", {})
-        if res.get("status"):
-            messagebox.showinfo("AES", res["status"])
+        res = call_api("/aes/generate_key")
+        if not res: return
+        key_b64 = res.get("key_base64")
+        if key_b64:
+            key_bytes = base64.b64decode(key_b64)
+            local_path = os.path.join(LOCAL_DIR, "aes_key.bin")
+            with open(local_path, "wb") as f:
+                f.write(key_bytes)
+            messagebox.showinfo("AES", f"Clé AES générée et sauvegardée localement :\n{local_path}")
             self.aes_loaded = True
 
     def load_aes_key(self):
         filepath = filedialog.askopenfilename(title="Choisir la clé AES")
         if filepath:
-            res = call_api("/aes/load_key", {"filename": filepath})
-            if res.get("status"):
-                messagebox.showinfo("AES", res["status"])
-                self.aes_loaded = True
+            # Copier la clé dans LOCAL_DIR
+            filename = os.path.join(LOCAL_DIR, os.path.basename(filepath))
+            with open(filepath, "rb") as f_in, open(filename, "wb") as f_out:
+                f_out.write(f_in.read())
+            messagebox.showinfo("AES", f"Clé AES copiée localement :\n{filename}")
+            self.aes_loaded = True
 
     def encrypt_aes(self):
         if not self.aes_loaded:
@@ -131,15 +148,26 @@ class CryptoGUI:
 
     # ---------------- RSA Actions ----------------
     def generate_rsa_keys(self):
-        pub_file = simpledialog.askstring("RSA", "Nom fichier clé publique :")
-        if not pub_file: return
-        priv_file = simpledialog.askstring("RSA", "Nom fichier clé privée :")
-        if not priv_file: return
+        pub_name = simpledialog.askstring("RSA", "Nom fichier clé publique :", initialvalue="rsa_pub.pem")
+        if not pub_name: return
+        priv_name = simpledialog.askstring("RSA", "Nom fichier clé privée :", initialvalue="rsa_priv.pem")
+        if not priv_name: return
         size = simpledialog.askinteger("RSA", "Taille clé RSA :", initialvalue=2048)
         if not size: return
-        res = call_api("/rsa/generate_keys", {"public_file": pub_file, "private_file": priv_file, "size": size})
-        if res.get("status"):
-            messagebox.showinfo("RSA", res["status"])
+
+        res = call_api("/rsa/generate_keys", {"public_file": pub_name, "private_file": priv_name, "size": size})
+        if not res: return
+
+        # Récupération des PEM depuis le serveur
+        pub_pem = res.get("public_key_pem")
+        priv_pem = res.get("private_key_pem")
+
+        if pub_pem and priv_pem:
+            local_pub = os.path.join(LOCAL_DIR, pub_name)
+            local_priv = os.path.join(LOCAL_DIR, priv_name)
+            with open(local_pub, "w", encoding="utf-8") as f: f.write(pub_pem)
+            with open(local_priv, "w", encoding="utf-8") as f: f.write(priv_pem)
+            messagebox.showinfo("RSA", f"Clés RSA générées et sauvegardées localement:\n{local_pub}\n{local_priv}")
             self.rsa_loaded = True
 
     def load_rsa_keys(self):
@@ -147,10 +175,14 @@ class CryptoGUI:
         if not pub: return
         priv = filedialog.askopenfilename(title="Clé privée RSA")
         if not priv: return
-        res = call_api("/rsa/load_keys", {"pub_file": pub, "priv_file": priv})
-        if res.get("status"):
-            messagebox.showinfo("RSA", res["status"])
-            self.rsa_loaded = True
+        # Copier les fichiers dans LOCAL_DIR
+        local_pub = os.path.join(LOCAL_DIR, os.path.basename(pub))
+        local_priv = os.path.join(LOCAL_DIR, os.path.basename(priv))
+        for src, dst in [(pub, local_pub), (priv, local_priv)]:
+            with open(src, "rb") as f_in, open(dst, "wb") as f_out:
+                f_out.write(f_in.read())
+        messagebox.showinfo("RSA", f"Clés RSA copiées localement:\n{local_pub}\n{local_priv}")
+        self.rsa_loaded = True
 
     def encrypt_rsa(self):
         if not self.rsa_loaded:
@@ -176,7 +208,7 @@ class CryptoGUI:
                 self.result_rsa.delete("1.0", tk.END)
                 self.result_rsa.insert(tk.END, decrypted)
 
-    # ---------------- SHA-256 Action ----------------
+    # ---------------- SHA-256 ----------------
     def hash_sha256(self):
         data = simpledialog.askstring("SHA-256", "Texte à hacher :")
         if data:
