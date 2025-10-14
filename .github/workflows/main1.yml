@@ -21,10 +21,9 @@ jobs:
       - name: Build Docker image
         run: docker build -t cryptoimage:latest .
 
-      - name: Run docker-compose
+      - name: Run docker compose
         run: |
-          docker-compose up --build -d
+          docker compose up --build -d
           sleep 5
           docker ps
-
 
