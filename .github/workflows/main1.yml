@@ -3,28 +3,29 @@ name: Build and Run Docker Container
 on:
   push:
     branches:
-      - "*"           # déclenche sur toutes les branches
+      - "*"
   pull_request:
-  workflow_dispatch:  # permet un run manuel
+  workflow_dispatch:
 
 jobs:
   build-and-run:
-    runs-on: self-hosted   # utilise ton runner local
+    runs-on: self-hosted
 
     steps:
-      # 1️⃣ Récupération du code
+      # Checkout sans nettoyer pour éviter les problèmes avec __pycache__
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: false
 
-      # 2️⃣ Build de l'image Docker
+      # Build Dockerfile
       - name: Build Docker image
         run: docker build -t cryptoimage:latest .
 
-      # 3️⃣ Lancement du conteneur avec docker-compose
+      # Lancer docker-compose
       - name: Run docker compose
         run: |
           docker compose up --build -d
           sleep 5
           docker ps
-
 
