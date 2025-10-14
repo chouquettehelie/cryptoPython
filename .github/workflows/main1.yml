@@ -10,7 +10,7 @@ on:
 jobs:
  
   lint:
-    runs-on: [self-hosted]
+    runs-on: host-runner
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
