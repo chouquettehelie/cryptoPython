@@ -1,41 +1,30 @@
-name: Build and Run Docker Container
+name: Python CI/CD
 
 on:
   push:
-    branches:
-      - "*"
+    branches: [ cryptoHttp ]
   pull_request:
-  workflow_dispatch:
+    branches: [ cryptoHttp ]
+  workflow_dispatch:   # lancement manuel
 
 jobs:
-  build-and-run:
-    runs-on: self-hosted
-    env:
-      PYTHONDONTWRITEBYTECODE: 1
-
+ 
+  lint:
+    runs-on: [self-hosted]
     steps:
-    
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          clean: false
+          name: binaries
+          path: |
+            docker-compose.yml
 
-      
-      - name: Clean __pycache__ files
+
+      - name: Docker
         run: |
-          find $RUNNER_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
-
-     
-      - name: Build Docker image
-        run: docker build -t cryptoimage:latest .
-
-     
-      - name: Run docker compose
-        run: |
-          docker compose up --build -d
-          sleep 5
-          docker ps
-
-
-
-
+          docker build -t cryptoimage .
+          docker compose up -d
